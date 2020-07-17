@@ -484,6 +484,82 @@ func tert(fromSecond parts: [SecondaryParsePart]) -> TertiaryBook {
                         chapters: chapters)
 }
 
+func jsonFromTextOrFootnote(tf: TextOrFootnote) -> [AnyHashable: Any] {
+    switch tf {
+    case .text(let t):
+        return [
+            "type": "text",
+            "text": t,
+        ]
+    case .italicText(let t):
+        return [
+            "type": "text",
+            "isItalic": true,
+            "text": t,
+        ]
+    case .footnote(let f):
+        var json: [AnyHashable: Any] = [
+            "type": "footnote",
+            "text": f.text,
+        ]
+        if let r = f.reference {
+            json["reference"] = r
+        }
+        if let s = f.symbol {
+            json["symbol"] = s
+        }
+        return json
+    }
+}
+
+func jsonFromPart(part: TertiaryPart) -> [AnyHashable: Any] {
+    switch part {
+    case .poeticLine(let text):
+        var contents: [TextOrFootnote] = []
+        if let text = text {
+            contents.append(.text(text))
+        }
+        return [
+            "type": "poetry",
+            "content": contents.map(jsonFromTextOrFootnote),
+        ]
+    case .para(let pd):
+        return [
+            "type": "paragraph",
+            "content": pd.contents.map(jsonFromTextOrFootnote),
+            "isIndented": pd.isIndented,
+        ]
+    case .verse(let n, let contents):
+        return [
+            "type": "verse",
+            "number": n,
+            "content": contents.map(jsonFromTextOrFootnote),
+        ]
+    case .descriptiveTitle(let contents):
+        return [
+            "type": "descriptiveTitle",
+            "content": contents.map(jsonFromTextOrFootnote),
+        ]
+    }
+}
+
+// The parsed type for 'content' would be named 'chapterItem' or 'chapter line' or 'chapter element' eg
+func jsonFromChapter(chapter: Chapter) -> [AnyHashable: Any] {
+    return [
+        "number": chapter.number,
+        "content": chapter.content.map(jsonFromPart),
+    ]
+}
+
+func json(fromBook book: TertiaryBook) -> [AnyHashable: Any] {
+    return [
+        "id": book.id,
+        "longName": book.longName,
+        "shortName": book.shortName,
+        "chapters": book.chapters.map(jsonFromChapter),
+    ]
+}
+
 func convert(usfm: URL) {
     let d = try! Data(contentsOf: usfm)
     let s = String(data: d, encoding: .utf8)!
@@ -497,8 +573,12 @@ func convert(usfm: URL) {
         allSeconds.append(contentsOf: secondParts)
     }
     let book = tert(fromSecond: allSeconds)
-    print(book)
-    abort()
+    let j = json(fromBook: book)
+    let data = try! JSONSerialization.data(withJSONObject: j, options: .prettyPrinted)
+//    let str = String(data: data, encoding: .utf8)!
+    
+    let jsonURL = URL(fileURLWithPath: "/Users/chris/fbv/" + book.id.lowercased() + ".json")
+    try! data.write(to: jsonURL)
 }
 
 let folder = URL(fileURLWithPath: "/Users/chris/fbv")
