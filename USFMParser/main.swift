@@ -104,7 +104,7 @@ enum SecondaryParsePart {
     case toc3(String) // 'Book abbreviation' but only used for psalms
     case majorTitle(String)
     
-    case poeticLineEmpty // FBV has a lot of empty '\q1' lines in psalms: Are they supposed to mean that the subsequent line is poetic?
+    case poeticLineEmpty // FBV has a lot of empty '\q1' lines in psalms: Are they supposed to mean that the subsequent line is poetic/indented?
     case poeticLine(String)
     case paraEmpty
     case paraWithText(String)
@@ -442,7 +442,7 @@ func tert(fromSecond parts: [SecondaryParsePart]) -> TertiaryBook {
         case .majorTitle:
             break // Ignore, same as TOC
         case .poeticLineEmpty:
-            content.append(.poeticLine(nil))
+            content.append(.poeticLine(nil)) // This might mean that the next row is to be indented.
         case .poeticLine(let t):
             content.append(.poeticLine(t))
         case .paraEmpty:
